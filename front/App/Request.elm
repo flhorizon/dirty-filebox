@@ -1,24 +1,26 @@
-module Request exposing (postFile)
+module App.Request exposing (putFile)
 
 import Http
     exposing
-        ( Request(..)
+        ( Request
         , header
-        , stringPart
+        , stringBody
+        , expectStringResponse
+        , request
         )
 
 
-postFile : String -> String -> Request
-postFile fileName encodedBlobs =
+putFile : String -> String -> String -> Request ()
+putFile host fileName encodedBlob =
     request
-        { method = "POST"
+        { method = "PUT"
         , headers =
             [ header "content-type" "application/octet-stream"
             , header "transfer-encoding" "chunked"
             , header "content-encoding" "gzip"
             ]
-        , url = url
-        , body = stringBody encodedBlob
+        , url = host
+        , body = stringBody " multipart/form-data" encodedBlob
         , expect = expectStringResponse (\_ -> Ok ())
         , timeout = Nothing
         , withCredentials = False

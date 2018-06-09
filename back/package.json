@@ -11,7 +11,7 @@
   },
   "devDependencies": {},
   "scripts": {
-    "start": "node back/main.js"
+    "start": "node main.js"
   },
   "author": "",
   "license": "ISC"

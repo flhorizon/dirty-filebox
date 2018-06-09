@@ -35,7 +35,7 @@ const app = express();
 app.use(express.static('public'), compression())
 
 app.put('/dump'
-		, require('decompress').create()
+//		, require('decompress').create()
 		, function(req, res, next) {
 			req.pipe(new Base64Transform())
             next()

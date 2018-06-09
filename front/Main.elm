@@ -3,16 +3,21 @@
 
 module Main exposing (..)
 
+import Http
 import Html exposing (..)
 import Html.Attributes exposing (src, title, class, id, type_)
 import Html.Events exposing (on)
 import Json.Decode as Decode
-import Ports exposing (FilePortData, fileSelected, fileContentRead)
+import App.Ports exposing (FilePortData, fileSelected, fileContentRead)
+import App.Request as Request
+import Navigation exposing (Location)
 
 
 type Msg
     = FileSelected
     | FileEncoded FilePortData
+    | NoUrlChange
+    | PostFileResult (Result Http.Error ())
 
 
 type Submission
@@ -31,12 +36,13 @@ type alias Image =
 type alias Model =
     { id : String
     , submission : Submission
+    , host : String
     }
 
 
 main : Program Never Model Msg
 main =
-    program
+    Navigation.program (always NoUrlChange)
         { init = init
         , update = update
         , view = view
@@ -44,10 +50,11 @@ main =
         }
 
 
-init : ( Model, Cmd Msg )
-init =
+init : Location -> ( Model, Cmd Msg )
+init { host } =
     ( { id = "ImageInputId"
       , submission = None
+      , host = host
       }
     , Cmd.none
     )
@@ -55,22 +62,33 @@ init =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        FileSelected ->
-            ( { model | submission = Encoding }
-            , fileSelected model.id
-            )
-
-        FileEncoded data ->
-            let
-                newImage =
-                    { contents = data.contents
-                    , filename = data.filename
-                    }
-            in
-                ( { model | submission = Uploading () }
-                , Cmd.none
+    let
+        noop =
+            ( model, Cmd.none )
+    in
+        case msg of
+            FileSelected ->
+                ( { model | submission = Encoding }
+                , fileSelected model.id
                 )
+
+            FileEncoded data ->
+                let
+                    newImage =
+                        { contents = data.contents
+                        , filename = data.filename
+                        }
+                in
+                    ( { model | submission = Uploading () }
+                    , Http.send PostFileResult <|
+                        Request.putFile model.host data.filename data.contents
+                    )
+
+            NoUrlChange ->
+                noop
+
+            PostFileResult _ ->
+                noop
 
 
 view : Model -> Html Msg

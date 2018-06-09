@@ -36,7 +36,7 @@ type alias Image =
 type alias Model =
     { id : String
     , submission : Submission
-    , host : String
+    , location : Location
     }
 
 
@@ -51,10 +51,10 @@ main =
 
 
 init : Location -> ( Model, Cmd Msg )
-init { host } =
-    ( { id = "ImageInputId"
+init location =
+    ( { id = "FileInputId"
       , submission = None
-      , host = host
+      , location = location
       }
     , Cmd.none
     )
@@ -74,21 +74,26 @@ update msg model =
 
             FileEncoded data ->
                 let
-                    newImage =
-                        { contents = data.contents
-                        , filename = data.filename
-                        }
+                    _ =
+                        Debug.log "ENCODED!"
+                            { contents = data.contents
+                            , filename = data.filename
+                            }
                 in
                     ( { model | submission = Uploading () }
                     , Http.send PostFileResult <|
-                        Request.putFile model.host data.filename data.contents
+                        Request.putFile model.location data.filename data.contents
                     )
 
             NoUrlChange ->
                 noop
 
-            PostFileResult _ ->
-                noop
+            PostFileResult res ->
+                let
+                    _ =
+                        Debug.log "RESULT:" res
+                in
+                    noop
 
 
 view : Model -> Html Msg

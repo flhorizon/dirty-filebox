@@ -16,6 +16,7 @@
             app.ports.fileSelected.subscribe(function (id) {
                 var node = document.getElementById(id);
                 if (node === null) {
+                    console.log("Node doesn't exist.")
                     return;
                 }
             

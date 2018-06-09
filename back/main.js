@@ -32,11 +32,13 @@ const express = require('express');
 const app = express();
 
 
-app.use(express.static('public'), compression())
+app.use(require("morgan")("tiny"));
+app.use(express.static('public'), compression());
 
 app.put('/dump'
 //		, require('decompress').create()
 		, function(req, res, next) {
+            console.log("[!] PIPING")
 			req.pipe(new Base64Transform())
             next()
 		}

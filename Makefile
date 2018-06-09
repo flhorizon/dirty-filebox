@@ -1,3 +1,3 @@
 
 all:
-	elm make app/Main.elm --warn --output public/Elm.js
+	elm make front/Main.elm --warn --output public/Elm.js

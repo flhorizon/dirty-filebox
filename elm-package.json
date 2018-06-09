@@ -4,7 +4,7 @@
     "license": "NOPE",
     "repository": "https://github.com/someone/nop.git",
     "source-directories": [
-        "app"
+        "front"
     ],
     "exposed-modules": [],
     "dependencies": {

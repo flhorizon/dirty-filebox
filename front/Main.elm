@@ -6,13 +6,20 @@ module Main exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (src, title, class, id, type_)
 import Html.Events exposing (on)
-import Json.Decode as JD
-import Ports exposing (ImagePortData, fileSelected, fileContentRead)
+import Json.Decode as Decode
+import Ports exposing (FilePortData, fileSelected, fileContentRead)
 
 
 type Msg
-    = ImageSelected
-    | ImageRead ImagePortData
+    = FileSelected
+    | FileEncoded FilePortData
+
+
+type Submission
+    = None
+    | Uploading ()
+    | Failure ()
+    | Encoding
 
 
 type alias Image =
@@ -23,7 +30,7 @@ type alias Image =
 
 type alias Model =
     { id : String
-    , mImage : Maybe Image
+    , submission : Submission
     }
 
 
@@ -40,7 +47,7 @@ main =
 init : ( Model, Cmd Msg )
 init =
     ( { id = "ImageInputId"
-      , mImage = Nothing
+      , submission = None
       }
     , Cmd.none
     )
@@ -49,19 +56,19 @@ init =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ImageSelected ->
-            ( model
+        FileSelected ->
+            ( { model | submission = Encoding }
             , fileSelected model.id
             )
 
-        ImageRead data ->
+        FileEncoded data ->
             let
                 newImage =
                     { contents = data.contents
                     , filename = data.filename
                     }
             in
-                ( { model | mImage = Just newImage }
+                ( { model | submission = Uploading () }
                 , Cmd.none
                 )
 
@@ -69,35 +76,28 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        imagePreview =
-            case model.mImage of
-                Just i ->
-                    viewImagePreview i
-
-                Nothing ->
-                    text ""
-    in
-        div [ class "imageWrapper" ]
-            [ input
+        viewInput =
+            input
                 [ type_ "file"
                 , id model.id
                 , on "change"
-                    (JD.succeed ImageSelected)
+                    (Decode.succeed FileSelected)
                 ]
                 []
-            , imagePreview
+    in
+        div [ class "imageWrapper" ]
+            [ case model.submission of
+                Encoding ->
+                    text "Encoding..."
+
+                None ->
+                    viewInput
+
+                _ ->
+                    text "Uploading..."
             ]
-
-
-viewImagePreview : Image -> Html Msg
-viewImagePreview image =
-    img
-        [ src image.contents
-        , title image.filename
-        ]
-        []
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    fileContentRead ImageRead
+    fileContentRead FileEncoded

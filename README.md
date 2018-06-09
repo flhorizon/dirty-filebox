@@ -1,5 +1,9 @@
-FileUploadWebapp
+Dirty Filebox
 =====================
+
+A minimalist file upload webapp.
+
+## Abstract
 
 Wirelessly transfering heavy files home on Android has become a major PITA.
 

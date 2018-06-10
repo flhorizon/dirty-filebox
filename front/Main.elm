@@ -5,8 +5,8 @@ module Main exposing (..)
 
 import Http
 import Html exposing (..)
-import Html.Attributes exposing (src, title, class, id, type_)
-import Html.Events exposing (on)
+import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 import Json.Decode as Decode
 import App.Ports exposing (FilePortData, fileSelected, fileContentRead)
 import App.Request as Request
@@ -17,17 +17,19 @@ type Msg
     = FileSelected
     | FileEncoded FilePortData
     | NoUrlChange
-    | PostFileResult (Result Http.Error ())
+    | SubmitFileResult (Result Http.Error ())
+    | Transition Control
 
 
-type Submission
+type Control
     = None
     | Uploading ()
     | Failure ()
+    | Success
     | Encoding
 
 
-type alias Image =
+type alias FileBundle =
     { contents : String
     , filename : String
     }
@@ -35,7 +37,7 @@ type alias Image =
 
 type alias Model =
     { id : String
-    , submission : Submission
+    , control : Control
     , location : Location
     }
 
@@ -53,7 +55,7 @@ main =
 init : Location -> ( Model, Cmd Msg )
 init location =
     ( { id = "FileInputId"
-      , submission = None
+      , control = None
       , location = location
       }
     , Cmd.none
@@ -68,56 +70,76 @@ update msg model =
     in
         case msg of
             FileSelected ->
-                ( { model | submission = Encoding }
+                ( { model | control = Encoding }
                 , fileSelected model.id
                 )
 
             FileEncoded data ->
-                let
-                    _ =
-                        Debug.log "ENCODED!"
-                            { contents = data.contents
-                            , filename = data.filename
-                            }
-                in
-                    ( { model | submission = Uploading () }
-                    , Http.send PostFileResult <|
-                        Request.putFile model.location data.filename data.contents
-                    )
+                ( { model | control = Uploading () }
+                , Http.send SubmitFileResult <|
+                    Request.putFile model.location data.filename data.contents
+                )
 
             NoUrlChange ->
                 noop
 
-            PostFileResult res ->
+            SubmitFileResult res ->
                 let
                     _ =
                         Debug.log "RESULT:" res
                 in
-                    noop
+                    ( { model | control = Success }, Cmd.none )
+
+            Transition t->  ( { model | control = t }, Cmd.none )
 
 
 view : Model -> Html Msg
 view model =
     let
         viewInput =
-            input
-                [ type_ "file"
-                , id model.id
-                , on "change"
-                    (Decode.succeed FileSelected)
+            div []
+                [ input
+                    [ type_ "file"
+                    , id model.id
+                    , on "change"
+                        (Decode.succeed FileSelected)
+                    ]
+                    []
                 ]
-                []
+
+        viewStatus status hasTransition =
+            div [] <|
+                p [] [ text status ]
+                    :: case hasTransition of
+                        Just msg ->
+                            [ button [ onClick msg ] [ text "Retry?" ] ]
+
+                        _ ->
+                            []
     in
         div [ class "imageWrapper" ]
-            [ case model.submission of
+            [ case model.control of
                 Encoding ->
-                    text "Encoding..."
+                    viewStatus "Encoding..." Nothing
 
                 None ->
                     viewInput
 
-                _ ->
-                    text "Uploading..."
+                Uploading _ ->
+                    viewStatus "Uploading..." Nothing
+
+                Failure _ ->
+                    viewStatus "Failure!" (Just (Transition None))
+
+                Success ->
+                    viewStatus "Upload successful." (Just (Transition None))
+            , div []
+                [ Html.form [ action "/dump", method "post", enctype "multipart/form-data" ]
+                    [ label [ for "myFile" ] [ text "Alternate method" ]
+                    , input [ type_ "file", name "myFile" ] []
+                    , button [ type_ "submit" ] [ text "GO" ]
+                    ]
+                ]
             ]
 
 

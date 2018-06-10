@@ -16,12 +16,9 @@
             app.ports.fileSelected.subscribe(function (id) {
                 var node = document.getElementById(id);
                 if (node === null) {
-                    console.log("Node doesn't exist.")
                     return;
                 }
             
-                // If your file upload field allows multiple files, you might
-                // want to consider turning this into a `for` loop.
                 var file = node.files[0];
                 var reader = new FileReader();
             
@@ -30,11 +27,13 @@
                 reader.onload = (function(event) {
                     // The event carries the `target`. The `target` is the file
                     // that was selected. The result is base64 encoded contents of the file.
-                    var base64encoded = event.target.result;
-                    // We build up the `ImagePortData` object here that will be passed to our Elm
-                    // runtime through the `fileContentRead` subscription.
+                    var asDataUrl = event.target.result;
+                    var marker = "base64,";
+                    var base64Encoded = asDataUrl.substring(asDataUrl.indexOf(marker) 
+                            + marker.length)
+
                     var portData = {
-                        contents: base64encoded,
+                        contents: base64Encoded,
                         filename: file.name
                     };
             

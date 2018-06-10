@@ -1,53 +1,96 @@
 'use strict'
 
-const { Transform } = require('stream')
+// JS is a steaming pile of intricate untyped dung
 
 const destinationFolder = process.env["DIRTY_FILEBOX_DESTINATION"] || "/tmp"
 
+const compression = require('compression')
+const express = require('express')
+const app = express()
 
-class Base64Transform extends Transform {
-	constructor(options) {
-		super(options);
-	}
-	_transform(chunk, encoding, cb) {
-		cb(null, Buffer.from(chunk, 'base64'));
-	}
+const fs = require('fs')
+const path = require('path')
+const multiparty = require('multiparty')
 
-}
+app.use(require("morgan")("tiny"))
+app.use(express.static('public'), compression())
 
-const multer  = require('multer')
-const storage = multer.diskStorage({
-	destination: function (req, file, cb) {
-		cb(null, destinationFolder)
-	},
-	filename: function (req, file, cb) {
-		cb(null, file.originalName + '-' + Date.now())
-	}
-})
-const upload = multer({ storage: storage });
+app.put('/dump-multi'
+    , function (httpRequest, httpResponse, next) {
+
+        const form = new multiparty.Form()
+        const customFields = { theOriginalName: '', nameStream: null }
+        const file = {
+            realname: null
+            , tmp: path.join(destinationFolder, "file-" + Date.now())
+            , ostream: null
+        }
+
+        file.ostream = fs.createWriteStream(
+            file.tmp
+            , { flags: "w", encoding: "base64" }
+        )
+        file.ostream.on('error', (err) => {
+            console.log("Stream error:", err)
+            if (err) throw err;
+        })
 
 
-const compression = require('compression');
-const express = require('express');
-const app = express();
+        form.on("part", (part) => {
+            // Assuming a base64 file in a text field.
+            const { name } = part
+            if (name === "theOriginalName") {
+                customFields.nameStream = part
+                customFields.nameStream.on('data', (chunk) => {
+                    customFields.theOriginalName += chunk
+                })
+                customFields.nameStream.on('end', () => {
+                    file.realname = path.join(destinationFolder, customFields.theOriginalName)
+                })
+
+            } else if (name === "theContents") {
+                part.setEncoding('utf8').pipe(file.ostream)
+            } else {
+                console.log("No clue !", name)
+                part.resume()
+            }
+        })
 
 
-app.use(require("morgan")("tiny"));
-app.use(express.static('public'), compression());
+        form.on("error", function (err) {
+            console.log(err)
+            if (err) throw err;
+        })
 
-app.put('/dump'
-//		, require('decompress').create()
-		, function(req, res, next) {
-            console.log("[!] PIPING")
-			req.pipe(new Base64Transform())
-            next()
-		}
-		, upload.single('givenFile')
-        , function (req, res, next) {
-			console.log(`[+] PUT ${req.file.originalName}`);
-			next();
-		})
+        form.on('close', function () {
+            console.log('(multipart done)')
 
+            file.ostream.on('finish', () => {
+
+                console.log('Upload completed!')
+
+                fs.rename(file.tmp, file.realname, (err) => {
+
+                    if (err) throw err;
+                    httpResponse.sendStatus(200)
+                });
+            })
+
+        })
+
+        form.parse(httpRequest)
+    })
+
+app.post('/dump'
+    , express.json()
+    , function (req, res, next) {
+        const { theOriginalName, theContents } = req.body
+        const stream = fs.createWriteStream(
+            path.join(destinationFolder, theOriginalName)
+            , { flags: "w", encoding: "base64" }
+        )
+        stream.write(theContents, "base64")
+    })
 
 
 app.listen(8000)

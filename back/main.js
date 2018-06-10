@@ -83,14 +83,28 @@ app.put('/dump-multi'
     })
 
 app.post('/dump'
-    , express.json()
     , function (req, res, next) {
-        const { theOriginalName, theContents } = req.body
-        const stream = fs.createWriteStream(
-            path.join(destinationFolder, theOriginalName)
-            , { flags: "w", encoding: "base64" }
-        )
-        stream.write(theContents, "base64")
+        const form = new multiparty.Form()
+        const files = []
+        const renameFiles = (files) => {
+            files.forEach(({ src, dest }) => {
+                fs.renameSync(src, dest)
+            })
+            console.log('Done.')
+            res.sendStatus(200)
+        }
+
+
+        form.on('file', (name, file) => {
+            files.push({
+                dest: path.join(destinationFolder, file.originalFilename)
+                , src: file.path
+            })
+        })
+        form.on('close', () => {
+            renameFiles(files)
+        })
+        form.parse(req)
     })
 
 

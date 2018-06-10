@@ -90,7 +90,8 @@ update msg model =
                 in
                     ( { model | control = Success }, Cmd.none )
 
-            Transition t->  ( { model | control = t }, Cmd.none )
+            Transition t ->
+                ( { model | control = t }, Cmd.none )
 
 
 view : Model -> Html Msg

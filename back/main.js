@@ -49,7 +49,8 @@ app.put('/dump-multi'
                 })
 
             } else if (name === "theContents") {
-                part.setEncoding('utf8').pipe(file.ostream)
+                part.setEncoding('ascii').pipe(file.ostream)
+                part.on('end', () => file.ostream.end())
             } else {
                 console.log("No clue !", name)
                 part.resume()

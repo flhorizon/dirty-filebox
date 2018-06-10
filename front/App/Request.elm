@@ -1,4 +1,4 @@
-module App.Request exposing (putFile,putFileJSon)
+module App.Request exposing (putFile, putFileJSon)
 
 import Http
     exposing
@@ -20,7 +20,6 @@ encodeFields fileName encodedBlob =
         [ ( "theOriginalName", Encode.string fileName )
         , ( "theContents", Encode.string encodedBlob )
         ]
-    
 
 
 putFileJSon : Location -> String -> String -> Request ()
@@ -32,27 +31,27 @@ putFileJSon { origin } fileName encodedBlob =
             ]
         , url = origin ++ "/dump"
         , body =
-           jsonBody <| encodeFields fileName encodedBlob            
+            jsonBody <| encodeFields fileName encodedBlob
         , expect = expectStringResponse (\_ -> Ok ())
         , timeout = Nothing
         , withCredentials = False
         }
 
+
 putFile : Location -> String -> String -> Request ()
 putFile { origin } fileName encodedBlob =
-
-        
     request
         { method = "PUT"
         , headers =
-            [-- header "Content-Encoding" "gzip"
+            [ 
+                -- header "Content-Encoding" "gzip"
             ]
         , url = origin ++ "/dump-multi"
         , body =
-           multipartBody [
-            stringPart "theOriginalName" fileName
-            ,stringPart "theContents" encodedBlob
-           ]          
+            multipartBody
+                [ stringPart "theOriginalName" fileName
+                , stringPart "theContents" encodedBlob
+                ]
         , expect = expectStringResponse (\_ -> Ok ())
         , timeout = Nothing
         , withCredentials = False

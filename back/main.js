@@ -104,6 +104,9 @@ app.post('/dump'
         form.on('close', () => {
             renameFiles(files)
         })
+        form.on('error', (err) => {
+            console.log(err)
+        })
         form.parse(req)
     })
 

@@ -3,14 +3,14 @@
 
 module Main exposing (..)
 
-import Http
+import App.Ports exposing (FilePortData, fileContentRead, fileSelected)
+import App.Request as Request
+import Browser exposing (Document)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Http
 import Json.Decode as Decode
-import App.Ports exposing (FilePortData, fileSelected, fileContentRead)
-import App.Request as Request
-import Navigation exposing (Location)
 
 
 type Msg
@@ -35,24 +35,27 @@ type alias FileBundle =
     }
 
 
+type alias Url =
+    String
+
+
 type alias Model =
     { id : String
     , control : Control
-    , location : Location
+    , location : Url
     }
 
 
-main : Program Never Model Msg
 main =
-    Navigation.program (always NoUrlChange)
+    Browser.document
         { init = init
         , update = update
-        , view = view
+        , view = view >> List.singleton >> Document "dirty-filebox"
         , subscriptions = subscriptions
         }
 
 
-init : Location -> ( Model, Cmd Msg )
+init : Url -> ( Model, Cmd Msg )
 init location =
     ( { id = "FileInputId"
       , control = None
@@ -68,30 +71,33 @@ update msg model =
         noop =
             ( model, Cmd.none )
     in
-        case msg of
-            FileSelected ->
-                ( { model | control = Encoding }
-                , fileSelected model.id
-                )
+    case msg of
+        FileSelected ->
+            ( { model | control = Encoding }
+            , fileSelected model.id
+            )
 
-            FileEncoded data ->
-                ( { model | control = Uploading () }
-                , Http.send SubmitFileResult <|
-                    Request.putFile model.location data.filename data.contents
-                )
+        FileEncoded data ->
+            ( { model | control = Uploading () }
+            , Request.putFile
+                (Result.map (always ()) >> SubmitFileResult)
+                model.location
+                data.filename
+                data.contents
+            )
 
-            NoUrlChange ->
-                noop
+        NoUrlChange ->
+            noop
 
-            SubmitFileResult res ->
-                let
-                    _ =
-                        Debug.log "RESULT:" res
-                in
-                    ( { model | control = Success }, Cmd.none )
+        SubmitFileResult res ->
+            let
+                _ =
+                    Debug.log "RESULT:" res
+            in
+            ( { model | control = Success }, Cmd.none )
 
-            Transition t ->
-                ( { model | control = t }, Cmd.none )
+        Transition t ->
+            ( { model | control = t }, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -111,37 +117,38 @@ view model =
         viewStatus status hasTransition =
             div [] <|
                 p [] [ text status ]
-                    :: case hasTransition of
-                        Just msg ->
-                            [ button [ onClick msg ] [ text "Retry?" ] ]
+                    :: (case hasTransition of
+                            Just msg ->
+                                [ button [ onClick msg ] [ text "Retry?" ] ]
 
-                        _ ->
-                            []
+                            _ ->
+                                []
+                       )
     in
-        div [ class "imageWrapper" ]
-            [ case model.control of
-                Encoding ->
-                    viewStatus "Encoding..." Nothing
+    div [ class "imageWrapper" ]
+        [ case model.control of
+            Encoding ->
+                viewStatus "Encoding..." Nothing
 
-                None ->
-                    viewInput
+            None ->
+                viewInput
 
-                Uploading _ ->
-                    viewStatus "Uploading..." Nothing
+            Uploading _ ->
+                viewStatus "Uploading..." Nothing
 
-                Failure _ ->
-                    viewStatus "Failure!" (Just (Transition None))
+            Failure _ ->
+                viewStatus "Failure!" (Just (Transition None))
 
-                Success ->
-                    viewStatus "Upload successful." (Just (Transition None))
-            , div []
-                [ Html.form [ action "/dump", method "post", enctype "multipart/form-data" ]
-                    [ label [ for "myFile" ] [ text "Alternate method" ]
-                    , input [ type_ "file", name "myFile" ] []
-                    , button [ type_ "submit" ] [ text "GO" ]
-                    ]
+            Success ->
+                viewStatus "Upload successful." (Just (Transition None))
+        , div []
+            [ Html.form [ action "/dump", method "post", enctype "multipart/form-data" ]
+                [ label [ for "myFile" ] [ text "Alternate method" ]
+                , input [ type_ "file", name "myFile" ] []
+                , button [ type_ "submit" ] [ text "GO" ]
                 ]
             ]
+        ]
 
 
 subscriptions : Model -> Sub Msg

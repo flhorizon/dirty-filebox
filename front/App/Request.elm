@@ -2,15 +2,14 @@ module App.Request exposing (putFile, putFileJSon)
 
 import Http
     exposing
-        ( Request
+        ( Error
+        , expectString
         , header
-        , multipartBody
-        , stringPart
         , jsonBody
-        , expectStringResponse
+        , multipartBody
         , request
+        , stringPart
         )
-import Navigation exposing (Location)
 import Json.Encode as Encode
 
 
@@ -22,8 +21,8 @@ encodeFields fileName encodedBlob =
         ]
 
 
-putFileJSon : Location -> String -> String -> Request ()
-putFileJSon { origin } fileName encodedBlob =
+putFileJSon : (Result Error String -> msg) -> String -> String -> String -> Cmd msg
+putFileJSon toMsg origin fileName encodedBlob =
     request
         { method = "PUT"
         , headers =
@@ -32,19 +31,18 @@ putFileJSon { origin } fileName encodedBlob =
         , url = origin ++ "/dump"
         , body =
             jsonBody <| encodeFields fileName encodedBlob
-        , expect = expectStringResponse (\_ -> Ok ())
+        , expect = expectString toMsg
         , timeout = Nothing
-        , withCredentials = False
+        , tracker = Nothing
         }
 
 
-putFile : Location -> String -> String -> Request ()
-putFile { origin } fileName encodedBlob =
+putFile : (Result Error String -> msg) -> String -> String -> String -> Cmd msg
+putFile toMsg origin fileName encodedBlob =
     request
         { method = "PUT"
         , headers =
-            [ 
-                -- header "Content-Encoding" "gzip"
+            [-- header "Content-Encoding" "gzip"
             ]
         , url = origin ++ "/dump-multi"
         , body =
@@ -52,7 +50,7 @@ putFile { origin } fileName encodedBlob =
                 [ stringPart "theOriginalName" fileName
                 , stringPart "theContents" encodedBlob
                 ]
-        , expect = expectStringResponse (\_ -> Ok ())
+        , expect = expectString toMsg
         , timeout = Nothing
-        , withCredentials = False
+        , tracker = Nothing
         }

@@ -3,6 +3,7 @@
 // JS is a steaming pile of intricate untyped dung
 
 const destinationFolder = process.env["DIRTY_FILEBOX_DESTINATION"] || "/tmp"
+const listeningPort = process.env["DIRTY_FILEBOX_PORT"] || 8000
 
 const compression = require('compression')
 const express = require('express')
@@ -111,5 +112,5 @@ app.post('/dump'
     })
 
 
-app.listen(8000)
+app.listen(listeningPort)
 console.log("[i] Storing incoming files in ", destinationFolder)
